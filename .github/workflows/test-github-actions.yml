@@ -1,0 +1,49 @@
+name: test github actions
+
+on:
+  workflow_dispatch: {}           # Permite dispararlo manualmente desde Actions
+  schedule:
+    - cron: '0 14 * * *'          # 14:00 UTC -> 10:00 VET (Caracas)
+    - cron: '0 16 * * *'          # 16:00 UTC -> 12:00 VET (Caracas)
+
+jobs:
+  test1:
+    name: test1
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'  # acelera instalaciones
+
+      # lxml suele traer wheel; estos headers ayudan si necesita compilar
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev libxslt1-dev
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests certifi beautifulsoup4 lxml pandas
+
+      - name: Ejecutar scraping
+        run: |
+          python bcv.py
+
+      - name: Set commit date (UTC)
+        run: echo "NOW=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
+
+      - name: Commit y push automáticos
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Completed exitosamente - ${{ env.NOW }}"
+          # commit_user_name: GitHub Actions
+          # commit_user_email: actions@github.com
